@@ -2,7 +2,8 @@ dataset/
 sample/
 playground/
 .vscode/
-data_txt/
 models/
 melodyhub_dataset/
 melodyhub_dataset_cleaned/
+training_notebook.ipynb
+__pycache__/
