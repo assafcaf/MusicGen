@@ -51,8 +51,7 @@ if __name__ == '__main__':
 
             # Measure time to get the batch
             batch_start = time.time()
-            xy = next(data_loader.get_batch("train"))
-            x, y = xy[0], xy[1]
+            x, y = data_loader.get_batch("train")
             batch_time = time.time() - batch_start
 
             # Measure time for forward pass
@@ -73,7 +72,7 @@ if __name__ == '__main__':
             # Print timing information
             # Estimate loss at intervals
             if step % (1000) == 0:
-                losses = estimate_loss(model, 25, splits=list(dataset.keys()), data_loader=data_loader)
+                losses = estimate_loss(model, 1, splits=list(dataset.keys()), data_loader=data_loader)
                 torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
             pbar.set_postfix(
                 batch=f"{batch_time:.2f}s",

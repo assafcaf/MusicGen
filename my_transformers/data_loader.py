@@ -80,14 +80,15 @@ class ABCNotationDataLoader(BasicDataLoader):
                 encoded_dataset = [self._encode_batch(self.ds[split][i:i+batch_size]) 
                                    for i in tqdm(range(0, len(self.ds[split]), batch_size),
                                                  desc=f"Encoding {split} data")]
-                dataset = CustomDataset(torch.vstack(encoded_dataset).contiguous())
+                dataset = CustomDataset(torch.vstack(encoded_dataset).contiguous().to('cpu'))
                 dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
                 self.dataloaders[split] = dataloader
         print()
     
     def get_batch(self, split=None):
         assert split in self.splits, f"Split {split} not found in dataset splits: {self.splits}"
-        yield next(iter(self.dataloaders[split]))
+        xy = next(iter(self.dataloaders[split]))
+        return xy[0].to(self.device), xy[1].to(self.device)
 
     def process_split(self, split, batch_size, num_processes, columns='abc notation'):
         print(f"Encoding {split} data...")
@@ -106,7 +107,7 @@ class ABCNotationDataLoader(BasicDataLoader):
                 encoded_batches.append(future.result())
 
             # Combine encoded batches into a dataset
-            dataset = CustomDataset(torch.vstack(encoded_batches).contiguous().to(self.device))
+            dataset = CustomDataset(torch.vstack(encoded_batches).to('cpu'))
             return DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
     
     def encode_data_parallel(self, splits=['train', 'validation'], num_processes=4, columns='abc notation', batch_size=10000):
@@ -115,7 +116,3 @@ class ABCNotationDataLoader(BasicDataLoader):
         for split in self.ds:
             if split in splits:
                 self.dataloaders[split] = self.process_split(split, batch_size, num_processes, columns)
-
-
-
-    

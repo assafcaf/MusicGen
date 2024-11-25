@@ -18,8 +18,7 @@ with torch.no_grad():
         for split in splits:
             losses = torch.zeros(eval_iters)
             for i in range(eval_iters):
-                xy = next(data_loader.get_batch(split))
-                x, y = xy[0], xy[1]
+                x,y = data_loader.get_batch(split)
                 _, loss = model(x, y)
                 losses[i] = loss.item()
             out[split] = losses.mean()
