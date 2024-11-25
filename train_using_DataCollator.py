@@ -43,17 +43,15 @@ class TokenizedDataset(Dataset):
             # Flatten overflowing chunks
             input_ids = tokens["input_ids"]
             for chunk in input_ids:
-                processed_data.append({
-                    "input_ids": chunk[:-1],  # Input for the model
-                    "labels": chunk[1:],    # Labels for the next-token prediction
-                })
+                processed_data.append(chunk)
         return torch.vstack(processed_data)
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return self.data[idx]
+        d = self.data[idx]
+        return d[:-1], d[1:]
 
 
 
