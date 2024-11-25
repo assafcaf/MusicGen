@@ -56,14 +56,18 @@ class ABCNotationDataLoader(BasicDataLoader):
             xs = []
             for text in batch[self.columns]:
                 # Encode the text
-                encoded = tokenizer.encode(text)
-                input_ids = encoded.ids
-                # Split into chunks of block_size
-                x = [input_ids[i : i + block_size+1] for i in range(0, len(input_ids)-1, block_size+1)]
-                # Pad the last block if needed
-                if len(x[-1]) < block_size+1:
-                    x[-1] += [tokenizer.token_to_id("<PAD>")] * (block_size - len(x[-1])+1)
-                xs.append(torch.tensor(x, dtype=int))
+                if len(text) > block_size//2:
+                    encoded = tokenizer.encode(text)
+
+                    input_ids = encoded.ids
+                    # Split into chunks of block_size
+                    x = [input_ids[i : i + block_size+1] for i in range(0, len(input_ids)-1, block_size+1)]
+                    # Pad the last block if needed
+                    for i in range(len(x)):
+                        if len(x[i]) < block_size+1:
+                            x[i] += [tokenizer.token_to_id("<PAD>")] * (block_size - len(x[i])+1)
+                    xs.append(torch.tensor(x, dtype=int))
+
                 
             # Append the blocks for this text to the result
             return torch.vstack(xs)

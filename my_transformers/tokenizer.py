@@ -14,7 +14,7 @@ def char_level_tokenizer(dataset):
     decode = lambda x: "".join([index2chat[c] for c in x])
     return encode, decode, vocab_size
 
-def BPETokenizer(dataset, vocab_size=256, split=None, columns='abc notation'):
+def BPETokenizer(dataset, vocab_size=256, split=None, columns='abc notation', pth=None):
     assert split in ['train', 'test', 'validation', None], 'Split must be one of train, test, validation, or None'
     
     print("Training tokenizer...")
@@ -22,15 +22,14 @@ def BPETokenizer(dataset, vocab_size=256, split=None, columns='abc notation'):
     tokenizer = Tokenizer(models.BPE())
 
     # Define pre-tokenization rules (split on |, :, and whitespace)
-    # tokenizer.pre_tokenizer = pre_tokenizers.WhitespaceSplit()
-
+    tokenizer.pre_tokenizer = pre_tokenizers.Split(pattern="\n+", behavior="removed")
     # Train tokenizer on your dataset
-    def batch_iterator(batch_size=10):
-        for i in range(0, len(dataset), batch_size):
-            yield dataset['train'][i : i + batch_size][columns]
+    def batch_iterator(batch_size=1000):
+        for i in range(0,len(dataset[split]), batch_size):
+            yield dataset[split][i : i + batch_size][columns]
             
     trainer = trainers.BpeTrainer(special_tokens=["<START>", "<END>", "<PAD>"], vocab_size=vocab_size)
-    tokenizer.train_from_iterator(batch_iterator(), trainer=trainer, length=len(dataset))
+    tokenizer.train_from_iterator(batch_iterator(), trainer=trainer, length=len(dataset[split]))
 
     return tokenizer
 

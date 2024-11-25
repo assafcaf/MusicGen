@@ -3,9 +3,9 @@ import os
 import time
 import torch
 from tqdm import tqdm
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader  
 
-from utils import load_data
+from utils import load_data, estimate_loss
 from config import GPT2Config
 
 from my_transformers.tokenizer import BPETokenizer, BPETransformers
@@ -14,31 +14,14 @@ from my_transformers.pipelines import pipeline
 from my_transformers.data_loader import ABCNotationDataLoader
 
 
-
-with torch.no_grad():
-    def estimate_loss(model, eval_iters, data_loader):
-        out = {}
-        model.eval()
-        for split in dataset:
-            losses = torch.zeros(eval_iters)
-            for i in range(eval_iters):
-                xy = next(data_loader.get_batch("train"))
-                x, y = xy[0], xy[1]
-                _, loss = model(x, y)
-                losses[i] = loss.item()
-            out[split] = losses.mean()
-        model.train()
-        return out
-
 if __name__ == '__main__':
     con = GPT2Config()
     # unique run name for saving models using time stamp
-    run_name = time.strftime("models/%Y-%m-%d-%H-%M-%S.pth")
-    run_pth = os.path.join("models/", run_name)
-    os.makedirs(os.path.join("models/", run_name), exist_ok=True)    
+    run_dir = time.strftime("%Y-%m-%d-%H-%M-%S")
+    run_pth = os.path.join("models/", run_dir) 
     print(f"Device: {con.device}", end='\n\n')
     dataset = load_data(con.dataset)
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='train', columns=con.columns)    
+    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)   
     data_loader = ABCNotationDataLoader(ds=dataset,
                                         batch_size=con.batch_size,
                                         tokenizer=tokenizer,
@@ -56,10 +39,10 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=con.lr)
 
     # training loop
-    n_iters = 5000
+    os.makedirs(os.path.join("models/", run_dir), exist_ok=True)   
     print("Training begins...")
-    with tqdm(total=n_iters, desc="Training Iterations") as pbar:
-        for step in range(n_iters):
+    with tqdm(total=con.n_iters, desc="Training Iterations") as pbar:
+        for step in range(con.n_iters):
             # Start timing
             start_time = time.time()
 
@@ -86,15 +69,15 @@ if __name__ == '__main__':
 
             # Print timing information
             # Estimate loss at intervals
-            if step % (n_iters // 10) == 0:
-                losses = estimate_loss(model, 25, data_loader=data_loader)
+            if step % (1000) == 0:
+                losses = estimate_loss(model, 25, splits=list(dataset.keys()), data_loader=data_loader)
+                torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
             pbar.set_postfix(
                 batch=f"{batch_time:.2f}s",
-                forward=f"{forward_time:.2f}s",
                 backward=f"{backward_time:.2f}s",
                 total=f"{total_time:.2f}s",
-                t_loss=losses['train'].item(),
-                v_loss=losses['validation'].item()
+                t_loss=f"{losses['train'].item():.2f}",
+                v_loss=f"{losses['validation'].item():.2f}"
                 )
             pbar.update(1)
     print("Training complete!")

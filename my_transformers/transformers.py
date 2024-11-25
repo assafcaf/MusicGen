@@ -16,7 +16,8 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(config.embed_size, config.vocab_size)
 
         # sharing weights between token embedding and output layer
-        # self.self.transformer.wte.weight = self.lm_head.weight
+        self.self.transformer.wte.weight = self.lm_head.weight
+        
     def forward(self, idx, target=None):
         B, T = idx.shape
         assert T <= self.config.block_size, f"Input tokens length {T} exceeds maximum length {self.config.block_size}"

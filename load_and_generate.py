@@ -17,9 +17,10 @@ from my_transformers.data_loader import ABCNotationDataLoader
 if __name__ == '__main__':
     con = GPT2Config()
     print(f"Device: {con.device}", end='\n\n')
-    run_pth = r"models/1/"
+    run_pth = r"models/2024-11-24-23-40-43/"
     dataset = load_data(con.dataset)
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='train')
+    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)    
+
 
 
     # Create a DataLoader for the training and validation data
