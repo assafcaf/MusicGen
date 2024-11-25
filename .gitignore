@@ -3,3 +3,5 @@ sample/
 playground/
 .vscode/
 data_txt/
+models/
+melodyhub_dataset/
