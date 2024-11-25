@@ -1,8 +1,9 @@
 
 from tokenizers import Tokenizer, models, trainers, pre_tokenizers
 from tokenizers.processors import TemplateProcessing
-
 from transformers import PreTrainedTokenizerFast
+
+
 def char_level_tokenizer(dataset):
     chars = sorted(set("\n\n".join(dataset["train"]["abc notation"]+dataset["validation"]["abc notation"])))
     vocab_size = len(chars) 
@@ -30,7 +31,6 @@ def BPETokenizer(dataset, vocab_size=256, split=None, columns='abc notation', pt
             
     trainer = trainers.BpeTrainer(special_tokens=["<START>", "<END>", "<PAD>"], vocab_size=vocab_size)
     tokenizer.train_from_iterator(batch_iterator(), trainer=trainer, length=len(dataset[split]))
-
     return tokenizer
 
 def BPETransformers(dataset, vocab_size=256, split=None):

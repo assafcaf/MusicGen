@@ -16,7 +16,7 @@ class GPT(nn.Module):
         self.lm_head = nn.Linear(config.embed_size, config.vocab_size)
 
         # sharing weights between token embedding and output layer
-        self.self.transformer.wte.weight = self.lm_head.weight
+        self.transformer.wte.weight = self.lm_head.weight
         
     def forward(self, idx, target=None):
         B, T = idx.shape

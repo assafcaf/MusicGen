@@ -12,7 +12,7 @@ from my_transformers.tokenizer import BPETokenizer, BPETransformers
 from my_transformers.transformers import GPT
 from my_transformers.pipelines import pipeline
 from my_transformers.data_loader import ABCNotationDataLoader
-
+from tokenizers import Tokenizer
 
 if __name__ == '__main__':
     con = GPT2Config()
@@ -21,7 +21,10 @@ if __name__ == '__main__':
     run_pth = os.path.join("models/", run_dir) 
     print(f"Device: {con.device}", end='\n\n')
     dataset = load_data(con.dataset)
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)   
+    
+    # Tokenize the dataset
+    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)       
+    # encode the dataset 
     data_loader = ABCNotationDataLoader(ds=dataset,
                                         batch_size=con.batch_size,
                                         tokenizer=tokenizer,
@@ -30,7 +33,7 @@ if __name__ == '__main__':
                                         device=con.device,
                                         columns=con.columns)
     
-    data_loader.encode_data(splits=dataset.keys())
+    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=4)
 
     
     # Create a DataLoader for the training and validation data
