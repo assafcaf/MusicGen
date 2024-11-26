@@ -4,8 +4,9 @@ __pycache__/
 dataset/
 models/
 melodyhub_dataset/
-melodyhub_dataset_cleaned/
-
+melodyhub_dataset_standardized/
+melodyhub_dataset_tokenized/
+melodyhub_splited/
 
 
 training_notebook.ipynb

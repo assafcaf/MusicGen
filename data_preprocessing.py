@@ -15,6 +15,7 @@ if __name__ == '__main__':
     # load data
     dataset = load_dataset("sander-wood/melodyhub")
     
+    x = set(dataset['train']["input"])
     # preprocess data
     updated_dataset = dataset.map(preprocess, batched=False, remove_columns=['input', 'dataset', 'task', 'output'], keep_in_memory=True)
 
