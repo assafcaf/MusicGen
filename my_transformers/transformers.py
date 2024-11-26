@@ -45,10 +45,18 @@ class GPT(nn.Module):
             loss = F.cross_entropy(tmp, target.view(-1)) # scalar loss for B*T predictions
         return logits, loss
 
-    def save_model(self, path):
+    def save_model(self, checkpoint, path):
         th.save(self.state_dict(), path)
+
     
-    def load_model(self, path):
-        self.load_state_dict(th.load(path))
+    def set_model_wieghts(self, checkpoint):
+        state_dict = checkpoint
+        # fix the keys of the state dictionary :(
+        # honestly no idea how checkpoints sometimes get this prefix, have to debug more
+        unwanted_prefix = '_orig_mod.'
+        for k,v in list(state_dict.items()):
+            if k.startswith(unwanted_prefix):
+                state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
+        self.load_state_dict(state_dict)
             
         

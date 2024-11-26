@@ -16,5 +16,5 @@ class GPT2Config:
         self.num_epochs = 100
         self.dataset = 'melodyhub_dataset_cleaned'
         self.columns = 'abc notation'
-        self.n_iters = 50000
+        self.n_iters = 25
         

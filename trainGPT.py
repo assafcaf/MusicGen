@@ -23,7 +23,7 @@ if __name__ == '__main__':
     dataset = load_data(con.dataset)
     
     # Tokenize the dataset
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='train', columns=con.columns)       
+    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)       
     # encode the dataset 
     data_loader = ABCNotationDataLoader(ds=dataset,
                                         batch_size=con.batch_size,
@@ -33,7 +33,7 @@ if __name__ == '__main__':
                                         device=con.device,
                                         columns=con.columns)
     
-    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=4, percentage=1)
+    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=10, percentage=.1)
     torch.set_float32_matmul_precision('high')
     
     # Create a DataLoader for the training and validation data
@@ -62,7 +62,7 @@ if __name__ == '__main__':
             # Measure time for forward pass
             forward_start = time.time()
             optimizer.zero_grad()
-            with torch.autocast(device_type=con.device, dtype=torch.bfloat16):
+            with torch.amp.autocast(device_type=con.device, dtype=torch.bfloat16):
                 logits, loss = model(x, y)
             forward_time = time.time() - forward_start
 
@@ -80,7 +80,10 @@ if __name__ == '__main__':
             # Estimate loss at intervals
             if step % (con.n_iters//25) == 0:
                 losses = estimate_loss(model, 1, splits=list(dataset.keys()), data_loader=data_loader)
-                torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
+                checkpoint = {
+                    'model': model.state_dict(),
+                }
+                model.save_model(checkpoint, os.path.join(run_pth, 'model.pt'))
             pbar.set_postfix(
                 batch=f"{batch_time:.2f}s",
                 backward=f"{backward_time:.2f}s",
@@ -91,9 +94,10 @@ if __name__ == '__main__':
             pbar.update(1)
     print("Training complete!")
     # Save the model
-    torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
+    checkpoint = {
+        'model': model.state_dict(),
+    }
+    model.save_model(checkpoint, os.path.join(run_pth, 'model.pt'))
     print("Model saved!")
-    
-    generator = pipeline('text-generation', model, tokenizer)
-    print(generator('X:1\nT:Title\nK:Am\n', max_len=64)[0])
+    exit(0)
 

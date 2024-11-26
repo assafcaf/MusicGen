@@ -17,7 +17,7 @@ from my_transformers.data_loader import ABCNotationDataLoader
 if __name__ == '__main__':
     con = GPT2Config()
     print(f"Device: {con.device}", end='\n\n')
-    run_pth = r"models/2024-11-25-20-49-03/"
+    run_pth = r"/home/assaf_caftory/MusicGen/models/2024-11-26-16-22-46"
     dataset = load_data(con.dataset)
     tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)       
 
@@ -26,7 +26,8 @@ if __name__ == '__main__':
 
     # Create a DataLoader for the training and validation data
     model = GPT(con)
-    model.load_model(os.path.join(run_pth, "model.pth"))
+    checkpoint = torch.load(os.path.join(run_pth, 'model.pt'), weights_only=True)
+    model.set_model_wieghts(checkpoint)
     model.to(con.device)
     
     # Create a pipeline for text generation
