@@ -25,9 +25,8 @@ class SelfAttention(nn.Module):
         wei = wei.masked_fill(self.tril == 0, float('-inf')) # B, block_size, block_size
         wei = torch.softmax(wei, dim=-1)
         out = wei @ v
+        
         out = self.fc_out(out)
-
-    
         return out
 
 class Mlp(nn.Module):

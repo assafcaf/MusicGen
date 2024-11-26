@@ -33,12 +33,13 @@ if __name__ == '__main__':
                                         device=con.device,
                                         columns=con.columns)
     
-    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=4, percentage=.1)
-    torch.set_float32_matmul_precision('medium')
+    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=4, percentage=1)
+    torch.set_float32_matmul_precision('high')
     
     # Create a DataLoader for the training and validation data
     model = GPT(con)
     model.to(con.device)
+    # model = torch.compile(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=con.lr)
 
     # training loop
@@ -57,7 +58,7 @@ if __name__ == '__main__':
             # Measure time for forward pass
             forward_start = time.time()
             optimizer.zero_grad()
-            with torch.autocast(device_type=con.device, dtype=torch.float16):
+            with torch.autocast(device_type=con.device, dtype=torch.bfloat16):
                 logits, loss = model(x, y)
             forward_time = time.time() - forward_start
 
