@@ -31,6 +31,7 @@ def BPETokenizer(dataset, vocab_size=256, split=None, columns='abc notation', pt
             
     trainer = trainers.BpeTrainer(special_tokens=["<START>", "<END>", "<PAD>"], vocab_size=vocab_size)
     tokenizer.train_from_iterator(batch_iterator(), trainer=trainer, length=len(dataset[split]))
+    print(f"Tokenizer vocab size: {tokenizer.get_vocab_size()}")
     return tokenizer
 
 def BPETransformers(dataset, vocab_size=256, split=None):

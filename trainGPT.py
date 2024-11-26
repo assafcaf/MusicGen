@@ -23,7 +23,7 @@ if __name__ == '__main__':
     dataset = load_data(con.dataset)
     
     # Tokenize the dataset
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)       
+    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='train', columns=con.columns)       
     # encode the dataset 
     data_loader = ABCNotationDataLoader(ds=dataset,
                                         batch_size=con.batch_size,
@@ -38,13 +38,17 @@ if __name__ == '__main__':
     
     # Create a DataLoader for the training and validation data
     model = GPT(con)
+    
     model.to(con.device)
-    # model = torch.compile(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=con.lr)
+    print("compiling model....")
+    
+    model = torch.compile(model)
+    optimizer = torch.optim.Adam(model.parameters(), lr=con.lr, betas=(0.9, 0.95), eps=1e-8)
 
     # training loop
     os.makedirs(os.path.join("models/", run_dir), exist_ok=True)   
     print("Training begins...")
+    
     with tqdm(total=con.n_iters, desc="Training Iterations") as pbar:
         for step in range(con.n_iters):
             # Start timing
@@ -65,6 +69,7 @@ if __name__ == '__main__':
             # Measure time for backward pass
             backward_start = time.time()
             loss.backward()
+            norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             backward_time = time.time() - backward_start
 
@@ -73,7 +78,7 @@ if __name__ == '__main__':
 
             # Print timing information
             # Estimate loss at intervals
-            if step % (1000) == 0:
+            if step % (con.n_iters//25) == 0:
                 losses = estimate_loss(model, 1, splits=list(dataset.keys()), data_loader=data_loader)
                 torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
             pbar.set_postfix(
