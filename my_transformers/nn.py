@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-
+import torch.nn.functional as F
 
 class SelfAttention(nn.Module):
     def __init__(self, embed_size, head_size):
@@ -87,10 +87,15 @@ class SelfAttentionBlock(nn.Module):
         q = q.view(B, T, self.num_heads, C // self.num_heads).transpose(1,2) # B, num_heads, T, head_size
         v = v.view(B, T, self.num_heads, C // self.num_heads).transpose(1,2) # B, num_heads, T, head_size
 
-        wei = q @ k.transpose(-2, -1) * self.embed_size**-0.5
-        wei = wei.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf')) # B, num_heads, T, T
-        wei = torch.softmax(wei, dim=-1)
-        out = wei @ v # B, num_heads, T, head_size
+        # old way of calculating attention
+        # wei = q @ k.transpose(-2, -1) * self.embed_size**-0.5
+        # wei = wei.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf')) # B, num_heads, T, T
+        # wei = torch.softmax(wei, dim=-1)
+        # out = wei @ v # B, num_heads, T, head_size
+        
+        # new way of calculating attention
+        out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+        
         out = out.transpose(1, 2).contiguous().view(B, T, C) # B, T, C (concatenated head_size*num_heads)
         out = self.c_proj(out)
         return out

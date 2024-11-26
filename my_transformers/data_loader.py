@@ -90,10 +90,11 @@ class ABCNotationDataLoader(BasicDataLoader):
         xy = next(iter(self.dataloaders[split]))
         return xy[0].to(self.device), xy[1].to(self.device)
 
-    def process_split(self, split, batch_size, num_processes, columns='abc notation'):
+    def process_split(self, split, batch_size, num_processes, columns='abc notation', percentage=1.):
         print(f"Encoding {split} data...")
         # Prepare batches
-        batches = [self.ds[split][i:i + batch_size] for i in range(0, len(self.ds[split]), batch_size)]
+        p = max(int(len(range(0, len(self.ds[split]), batch_size) )* percentage), 1)
+        batches = [self.ds[split][i:i + batch_size] for i in range(0, len(self.ds[split]), batch_size)[:p]]
 
         encoded_batches = []
 
@@ -107,12 +108,12 @@ class ABCNotationDataLoader(BasicDataLoader):
                 encoded_batches.append(future.result())
 
             # Combine encoded batches into a dataset
-            dataset = CustomDataset(torch.vstack(encoded_batches).to('cpu'))
+            dataset = CustomDataset(torch.vstack(encoded_batches).to('cpu').contiguous())
             return DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
     
-    def encode_data_parallel(self, splits=['train', 'validation'], num_processes=4, columns='abc notation', batch_size=10000):
+    def encode_data_parallel(self, splits=['train', 'validation'], num_processes=4, columns='abc notation', batch_size=10000, percentage=1.):
         print("Encoding data parallel...")
         self.dataloaders = {}
         for split in self.ds:
             if split in splits:
-                self.dataloaders[split] = self.process_split(split, batch_size, num_processes, columns)
+                self.dataloaders[split] = self.process_split(split, batch_size, num_processes, columns, percentage)
