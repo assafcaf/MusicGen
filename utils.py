@@ -12,13 +12,15 @@ def load_data(pth, split=None):
 
 
 with torch.no_grad():
-    def estimate_loss(model, eval_iters, splits=['train', 'validation'], data_loader=None):
+    def estimate_loss(model, eval_iters , splits, dataloader):
+        
         out = {}
         model.eval()
         for split in splits:
             losses = torch.zeros(eval_iters)
+            dataloader.set_split(split)
             for i in range(eval_iters):
-                x,y = data_loader.get_batch(split)
+                x, y = next(iter(dataloader))
                 _, loss = model(x, y)
                 losses[i] = loss.item()
             out[split] = losses.mean()

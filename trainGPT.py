@@ -79,7 +79,7 @@ if __name__ == '__main__':
             # Print timing information
             # Estimate loss at intervals
             if step % (con.n_iters//25) == 0:
-                losses = estimate_loss(model, 1, splits=list(dataset.keys()), data_loader=data_loader)
+                losses = estimate_loss(model, 25, splits=list(dataset.keys()), data_loader=data_loader)
                 checkpoint = {
                     'model': model.state_dict(),
                 }

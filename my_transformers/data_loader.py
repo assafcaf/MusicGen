@@ -1,4 +1,6 @@
+import os
 import torch
+import numpy as np
 from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
@@ -117,3 +119,60 @@ class ABCNotationDataLoader(BasicDataLoader):
         for split in self.ds:
             if split in splits:
                 self.dataloaders[split] = self.process_split(split, batch_size, num_processes, columns, percentage)
+
+
+def load_data(data_root):
+    dtype = np.uint16 # (can do since enc.max_token_value == 50256 is < 2**16)
+    f_names = os.listdir(data_root)
+    shareds_train = []
+    shards_val = [] 
+    for fname in f_names:
+        print(f"reading {fname}...")
+        with open(os.path.join(data_root, fname), "rb") as f:
+            tokens = torch.tensor(np.frombuffer(f.read(), dtype=dtype)).long().contiguous()
+        if fname.startswith('train'):
+            shareds_train.append(tokens)
+        else:
+            shards_val.append(tokens)
+    return shareds_train, shards_val
+
+
+class ABCTokenizedDataset(Dataset):
+    def __init__(self, data_root, block_size, device='cpu', dtype=torch.long, batch_size=1, max_batches_per_shard=100): 
+        self.block_size = block_size
+        self.device = device
+        self.dtype = dtype
+        self.batch_size = batch_size
+        self.shareds_train, self.shards_val = load_data(data_root)
+        self.current_shard = 1
+        self.batch_cout = 0
+        self.split = 'train'
+        self.max_batches_per_shard = 100
+        
+    def set_split(self, split):
+        if split == 'train':
+            self.split = split
+            
+    def __len__(self):
+        return len(self.data) - self.block_size
+
+    def handle_shard(self):
+        if self.split == 'train':
+            data = self.shareds_train[self.current_shard]
+            self.batch_cout += 1
+        else:
+            data = self.shards_val[0]
+        if self.batch_cout > self.max_batches_per_shard:
+            self.current_shard = torch.randint(0, len(self.shareds_train), (1,)).item()
+        return data
+    
+    def __getitem__(self, idx):
+        data = self.handle_shard()
+        try:
+            idxs = torch.randint(0, len(data) - self.block_size, (self.batch_size,))
+            d = torch.zeros(self.batch_size, self.block_size+1, dtype=self.dtype)
+            for i, idx in enumerate(idxs):
+                d[i] = data[idx : idx + self.block_size+1]
+        except:
+            x=1
+        return d[:, :self.block_size].to(self.device), d[:, 1:].to(self.device)

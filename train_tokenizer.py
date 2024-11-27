@@ -23,5 +23,5 @@ if __name__ == '__main__':
                                   vocab_size=VOCAB_SIZE)
     
     print(f"Tokenizer vocab size: {tokenizer.get_vocab_size()}")
-    tokenizer.save_model(".", "Tokenizer/ABCNotationTokenizer")
+    tokenizer.save_model(".", "Tokenizer/ByteLevelBPETokenizer-512")
 
