@@ -3,17 +3,14 @@ import os
 import time
 import torch
 from tqdm import tqdm
-from torch.utils.data import DataLoader  
-
-from utils import load_data, estimate_loss
+from utils import  estimate_loss
 from config import GPT2Config
+from tokenizers import ByteLevelBPETokenizer
 from my_transformers.transformers import GPT
-from my_transformers.pipelines import pipeline
+from torch.utils.tensorboard import SummaryWriter  # Import TensorBoard SummaryWriter
 from my_transformers.data_loader import ABCTokenizedDataset
 
 
-from tokenizers import ByteLevelBPETokenizer
-from tokenizers.processors import BertProcessing
 
 if __name__ == '__main__':
     # set cude device
@@ -44,12 +41,14 @@ if __name__ == '__main__':
     model.to(con.device)
     print("compiling model....")
     model = torch.compile(model)
-    
-    
     optimizer = torch.optim.Adam(model.parameters(), lr=con.lr, betas=(0.9, 0.95), eps=1e-8)
+
+    # TensorBoard SummaryWriter
+    writer = SummaryWriter(log_dir=f"logs/{run_dir}")
 
 
     # training loop
+    sum_of_tokens = 0
     os.makedirs(os.path.join("models/", run_dir), exist_ok=True)   
     print("Training begins...")
     with tqdm(total=con.n_iters, desc="Training Iterations") as pbar:
@@ -70,6 +69,8 @@ if __name__ == '__main__':
                 logits, loss = model(x, y)
             forward_time = time.time() - forward_start
 
+
+            
             # Measure time for backward pass
             backward_start = time.time()
             loss.backward()
@@ -80,11 +81,19 @@ if __name__ == '__main__':
             
             # Total step time
             total_time = time.time() - start_time
-
+            
+            # Log training loss and step time to TensorBoard
+            sum_of_tokens += con.batch_size * con.block_size
+            logis_std = logits.std()
+            writer.add_scalar("Traning/train_los", loss.item(), step)
+            writer.add_scalar("Traning/Step_Time", total_time, step)
+            writer.add_scalar("Traning/Tokens", sum_of_tokens, step)
+            writer.add_scalar("Traning/logits_std", logits, step)
             # Print timing information
             # Estimate loss at intervals
             if step % (1000) == 0:
                 losses = estimate_loss(model, 25, splits=['train', 'validation'], dataloader=dataloader)   
+                writer.add_scalar("Traning/validation_loss", losses['validation'], step)
                 checkpoint = {
                     'model': model.state_dict(),
                 }

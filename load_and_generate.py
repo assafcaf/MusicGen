@@ -20,13 +20,6 @@ if __name__ == '__main__':
         vocab="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-vocab.json",
         merges="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-merges.txt",
     )
-    # tokenizer._tokenizer.post_processor = BertProcessing(
-    # ("<START>", tokenizer.token_to_id("<END>")),
-    # ("<ENC>", tokenizer.token_to_id("<START>")),
-    # )      
-
-
-
 
     # Create a DataLoader for the training and validation data
     model = GPT(con)

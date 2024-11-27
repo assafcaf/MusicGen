@@ -1,6 +1,6 @@
 .vscode/
 __pycache__/
-
+logs/
 dataset/
 models/
 melodyhub_dataset/
