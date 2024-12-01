@@ -15,7 +15,7 @@ if __name__ == '__main__':
     con = GPT2Config()
     print(f"Device: {con.device}", end='\n\n')
     
-    run_pth = r"/home/assaf_caftory/MusicGen/models/2024-11-27-14-15-24"
+    run_pth = r"/home/assaf_caftory/MusicGen/runs/2024-12-01-12-33-26"
     tokenizer = tokenizer = ByteLevelBPETokenizer(
         vocab="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-vocab.json",
         merges="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-merges.txt",
@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     # Create a DataLoader for the training and validation data
     model = GPT(con)
-    checkpoint = torch.load(os.path.join(run_pth, 'model.pth'), weights_only=True)
+    checkpoint = torch.load(os.path.join(run_pth, 'step0_model.bin'), weights_only=True)
     model.set_model_wieghts(checkpoint)
     model.to(con.device)
     

@@ -1,8 +1,7 @@
 .vscode/
 __pycache__/
-logs/
 dataset/
-models/
+runs/
 melodyhub_dataset/
 melodyhub_dataset_standardized/
 melodyhub_dataset_tokenized/

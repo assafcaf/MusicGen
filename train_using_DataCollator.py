@@ -3,7 +3,7 @@ import os
 import time
 import torch
 from tqdm import tqdm
-from utils import  estimate_loss
+from utils import  estimate_loss, save_config_to_json
 from config import GPT2Config
 from tokenizers import ByteLevelBPETokenizer
 from my_transformers.transformers import GPT
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     
     # unique run name for saving models using time stamp
     run_dir = time.strftime("%Y-%m-%d-%H-%M-%S")
-    run_pth = os.path.join("models/", run_dir) 
+    run_pth = os.path.join("runs/", run_dir) 
     print(f"Device: {con.device}", end='\n\n')
     
     # Tokenize the dataset
@@ -44,12 +44,14 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=con.lr, betas=(0.9, 0.95), eps=1e-8)
 
     # TensorBoard SummaryWriter
-    writer = SummaryWriter(log_dir=f"logs/{run_dir}")
+    writer = SummaryWriter(log_dir=run_pth)
 
 
     # training loop
     sum_of_tokens = 0
     os.makedirs(os.path.join("models/", run_dir), exist_ok=True)   
+    save_config_to_json(con, os.path.join(run_pth, 'config.json'))
+    
     print("Training begins...")
     with tqdm(total=con.n_iters, desc="Training Iterations") as pbar:
         for step in range(con.n_iters):
@@ -85,10 +87,10 @@ if __name__ == '__main__':
             # Log training loss and step time to TensorBoard
             sum_of_tokens += con.batch_size * con.block_size
             logis_std = logits.std()
-            writer.add_scalar("Traning/train_los", loss.item(), step)
+            writer.add_scalar("Traning/train_loss", loss.item(), step)
             writer.add_scalar("Traning/Step_Time", total_time, step)
             writer.add_scalar("Traning/Tokens", sum_of_tokens, step)
-            writer.add_scalar("Traning/logits_std", logits, step)
+            writer.add_scalar("Traning/logits_std", logits.std(), step)
             # Print timing information
             # Estimate loss at intervals
             if step % (1000) == 0:
@@ -97,7 +99,7 @@ if __name__ == '__main__':
                 checkpoint = {
                     'model': model.state_dict(),
                 }
-                torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
+                torch.save(model.state_dict(), os.path.join(run_pth, f'step_{step}_model.bin'))
             pbar.set_postfix(
                 batch=f"{batch_time:.2f}s",
                 backward=f"{backward_time:.2f}s",
@@ -109,5 +111,5 @@ if __name__ == '__main__':
             pbar.update(1)
     print("Training complete!")
     # Save the model
-    torch.save(model.state_dict(), os.path.join(run_pth, 'model.pth'))
+    torch.save(model.state_dict(), os.path.join(run_pth, 'model.bin'))
     print("Model saved!")
