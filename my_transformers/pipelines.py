@@ -1,12 +1,12 @@
 import torch
 import torch.nn.functional as F
-def pipeline(mode, model, tokenizer):
+def pipeline(mode, model, tokenizer, device="cpu"):
     if mode == 'text-generation':
         def generate(prompt, max_len=1024):
             next_token = torch.tensor([411])
             model.eval()
             idx = tokenizer.encode(prompt).ids
-            idx = torch.tensor(idx).unsqueeze(0).to(model.config.device)
+            idx = torch.tensor(idx).unsqueeze(0).to(device)
             while next_token != tokenizer.encode("<END>").ids[0]:
                 with torch.no_grad():
                     logits, _ = model(idx[:, -model.config.block_size:])

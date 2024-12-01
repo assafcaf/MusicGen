@@ -12,6 +12,7 @@ from tokenizers.processors import BertProcessing
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     con = GPT2Config()
     print(f"Device: {con.device}", end='\n\n')
     
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     model.to(con.device)
     
     # Create a pipeline for text generation
-    generator = pipeline('text-generation', model, tokenizer)
+    generator = pipeline('text-generation', model, tokenizer, device=device)
     prompt = input("Enter a prompt: ")
     while prompt != 'quit':
         print("Generated text: ")
