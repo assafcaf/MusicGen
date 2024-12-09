@@ -19,9 +19,9 @@ if __name__ == '__main__':
     # Customize training
     tokenizer.train_from_iterator(batch_iterator(),
                                   length=len(dataset['train']),
-                                  special_tokens=["<START>", "<END>", "<PAD>"],
+                                  special_tokens=["<s>", "</s>"],
                                   vocab_size=VOCAB_SIZE)
     
     print(f"Tokenizer vocab size: {tokenizer.get_vocab_size()}")
-    tokenizer.save_model(".", "Tokenizer/ByteLevelBPETokenizer-512")
+    tokenizer.save_model(".", f"Tokenizer/ByteLevelBPETokenizer-{VOCAB_SIZE}/ABCNotationTokenizer")
 

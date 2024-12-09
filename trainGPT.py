@@ -3,60 +3,66 @@ import os
 import time
 import torch
 from tqdm import tqdm
-from torch.utils.data import DataLoader  
-
-from utils import load_data, estimate_loss
+from utils import  estimate_loss, save_config_to_json, get_scheduler
 from config import GPT2Config
-
-from my_transformers.tokenizer import BPETokenizer, BPETransformers
+from tokenizers import ByteLevelBPETokenizer
 from my_transformers.transformers import GPT
-from my_transformers.pipelines import pipeline
-from my_transformers.data_loader import ABCNotationDataLoader
-from tokenizers import Tokenizer
+from torch.utils.tensorboard import SummaryWriter  # Import TensorBoard SummaryWriter
+from my_transformers.data_loader import ABCTokenizedDataset
+
+
 
 if __name__ == '__main__':
+    # set cude device
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    
     con = GPT2Config()
+    torch.set_float32_matmul_precision('medium')
+    
     # unique run name for saving models using time stamp
     run_dir = time.strftime("%Y-%m-%d-%H-%M-%S")
-    run_pth = os.path.join("models/", run_dir) 
+    run_pth = os.path.join("runs/", run_dir) 
     print(f"Device: {con.device}", end='\n\n')
-    dataset = load_data(con.dataset)
     
     # Tokenize the dataset
-    tokenizer = BPETokenizer(dataset, vocab_size=con.vocab_size, split='validation', columns=con.columns)       
-    # encode the dataset 
-    data_loader = ABCNotationDataLoader(ds=dataset,
-                                        batch_size=con.batch_size,
-                                        tokenizer=tokenizer,
-                                        shuffle=True,
-                                        block_size=con.block_size,
-                                        device=con.device,
-                                        columns=con.columns)
+    tokenizer = tokenizer = ByteLevelBPETokenizer(
+            vocab="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-vocab.json",
+            merges="/home/assaf_caftory/MusicGen/Tokenizer/ByteLevelBPETokenizer-512/ABCNotationTokenizer-merges.txt",
+        )
+
+    dataloader = ABCTokenizedDataset(data_root=con.root_data, batch_size=con.batch_size, block_size=con.block_size, device=con.device, dtype=torch.long, max_batches_per_shard=con.max_batches_per_shard)
     
-    data_loader.encode_data_parallel(splits=dataset.keys(), num_processes=10, percentage=.1)
-    torch.set_float32_matmul_precision('high')
+    # tdl = DataLoader(t_dset, batch_size=con.batch_size, shuffle=True)
+    # vdl = DataLoader(v_dest, batch_size=con.batch_size, shuffle=True)
+    #####################################################################################################################
     
-    # Create a DataLoader for the training and validation data
+    
     model = GPT(con)
-    
     model.to(con.device)
     print("compiling model....")
-    
     model = torch.compile(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=con.lr, betas=(0.9, 0.95), eps=1e-8)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.95), eps=1e-8)
+    scheduler = get_scheduler(con)
+    
+    # TensorBoard SummaryWriter
+    writer = SummaryWriter(log_dir=run_pth)
+
 
     # training loop
+    sum_of_tokens = 0
     os.makedirs(os.path.join("models/", run_dir), exist_ok=True)   
-    print("Training begins...")
+    save_config_to_json(con, os.path.join(run_pth, 'config.json'))
     
+    print("Training begins...")
     with tqdm(total=con.n_iters, desc="Training Iterations") as pbar:
         for step in range(con.n_iters):
+            dataloader.set_split('train')
             # Start timing
             start_time = time.time()
 
             # Measure time to get the batch
             batch_start = time.time()
-            x, y = data_loader.get_batch("train")
+            x, y = next(iter(dataloader))
             batch_time = time.time() - batch_start
 
             # Measure time for forward pass
@@ -66,38 +72,56 @@ if __name__ == '__main__':
                 logits, loss = model(x, y)
             forward_time = time.time() - forward_start
 
+
+            
             # Measure time for backward pass
             backward_start = time.time()
             loss.backward()
             norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            # lr scheduler
+            lr = scheduler(step)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
             optimizer.step()
             backward_time = time.time() - backward_start
-
+            
+            # Measure token per second
+            
             # Total step time
             total_time = time.time() - start_time
-
+            
+            # Log training loss and step time to TensorBoard
+            sum_of_tokens += con.batch_size * con.block_size
+            logis_std = logits.std()
+            writer.add_scalar("Traning/train_loss", loss.item(), step)
+            writer.add_scalar("Traning/Step_Time", total_time, step)
+            writer.add_scalar("Traning/Tokens", sum_of_tokens, step)
+            writer.add_scalar("Traning/logits_std", logits.std(), step)
+            writer.add_scalar("Traning/learning_rate", lr, step)
+            writer.add_scalar("Traning/norm", norm, step)
             # Print timing information
             # Estimate loss at intervals
-            if step % (con.n_iters//25) == 0:
-                losses = estimate_loss(model, 25, splits=list(dataset.keys()), data_loader=data_loader)
+            if step % (1000) == 0:
+                losses = estimate_loss(model, 25, splits=['train', 'validation'], dataloader=dataloader)   
+                writer.add_scalar("Traning/validation_loss", losses['validation'], step)
+                
+            # Save model at intervals of 10% of total iterations
+            if step % (con.n_iters//10) == 0:
                 checkpoint = {
                     'model': model.state_dict(),
                 }
-                model.save_model(checkpoint, os.path.join(run_pth, 'model.pt'))
+                torch.save(model.state_dict(), os.path.join(run_pth, f'step_{step}_model.bin'))
+                
             pbar.set_postfix(
                 batch=f"{batch_time:.2f}s",
                 backward=f"{backward_time:.2f}s",
                 total=f"{total_time:.2f}s",
+                tokens=f"{con.batch_size * con.block_size / total_time:.2f}/s",
                 t_loss=f"{losses['train'].item():.2f}",
                 v_loss=f"{losses['validation'].item():.2f}"
                 )
             pbar.update(1)
     print("Training complete!")
     # Save the model
-    checkpoint = {
-        'model': model.state_dict(),
-    }
-    model.save_model(checkpoint, os.path.join(run_pth, 'model.pt'))
+    torch.save(model.state_dict(), os.path.join(run_pth, 'model.bin'))
     print("Model saved!")
-    exit(0)
-

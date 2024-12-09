@@ -17,6 +17,7 @@ class GPT(nn.Module):
 
         # sharing weights between token embedding and output layer
         self.transformer.wte.weight = self.lm_head.weight
+        self.dropout = nn.Dropout(config.dropout)
         
     def forward(self, idx, target=None):
         B, T = idx.shape
@@ -34,6 +35,9 @@ class GPT(nn.Module):
             
         # Layer normalization
         x = self.transformer['ln_f'](x) # B, T, embed_size
+        
+        # Apply dropout
+        x = self.dropout(x)
         
         # Output logits for next token prediction from lm_head
         logits = self.lm_head(x) # B, T, vocab_size

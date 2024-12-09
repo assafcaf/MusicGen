@@ -61,7 +61,7 @@ def standardized_data(dataset):
         col = task_map[example['task']]
         text = example[col]
         text =  "\n".join([s for s in text.split("\n")[:-1] if s[0] not in SYMBALS_TO_REMOVE]) 
-        example['abc'] ="<START>" +  text + '<END>'
+        example['abc'] ="<s>" +  text + '</s>'
         return example
     dataset = dataset.filter(lambda example: example['task'] != 'variation', desc="Filtering variation tasks")
 
@@ -80,11 +80,7 @@ def tokenize_data(dataset, tokenizer=None):
         # note: I think eot should be prepended not appended... hmm. it's called "eot" though...
         out = {'ids': ids, 'len': len(ids)}
         return out 
-
-        # loaad tokenizer
-    
  
-
     # tokenize data
     tokenized_dataset = dataset.map(
         tokenize,
